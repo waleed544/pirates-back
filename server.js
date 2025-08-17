@@ -114,7 +114,7 @@ async function editPost(id, newimgurl, newtitle, newcontent) {
 
 async function getUserPosts(id) {
   const result = await db.query(
-    `select img_url,title,content,id from posts where user_id=${id}`
+    `select img_url,title,content,id from posts where user_id=${id} order by id Asc`
   );
   console.log("from func" + JSON.stringify(result.rows));
   if (result.rowCount > 0) {
@@ -157,6 +157,102 @@ async function getUserIInfo(userId) {
     return -1;
   }
 }
+
+async function editUserInfo(phone,email,age,userId) {
+  try{
+  const result=await db.query(`update info set age=${age} , phone='${phone}', email='${email}' where user_id=${userId} RETURNING *`);
+  if(result.rows.length>0)
+  {
+    return 1;
+  }
+  else{
+    return 0;
+  }
+  }catch(err)
+  {
+    console.log("Error updating info "+err);
+    return -1;
+  }
+  
+}
+
+async function editUserProfilePic(userId,profileUrl) {
+  try{
+  const result =await db.query(`update info set profilepic_url='${profileUrl}' where user_id=${userId} RETURNING *`);
+   if(result.rows.length>0)
+  {
+    return 1;
+  }
+  else{
+    return 0;
+  }
+  }catch(err){
+    console.log("Error happened "+err);
+    return -1;
+  }
+}
+
+async function editUserCoverPic(userId,coverUrl) {
+  try{
+  const result =await db.query(`update info set coverpic_url='${coverUrl}' where user_id=${userId} RETURNING *`);
+   if(result.rows.length>0)
+  {
+    return 1;
+  }
+  else{
+    return 0;
+  }
+  }catch(err){
+    console.log("Error happened "+err);
+    return -1;
+  }
+}
+
+async function getUserInfoPicById(userId) {
+  try{
+  const result= await db.query(`select coverpic_url,profilepic_url from info where user_id =${userId}`);
+  if(result.rows.length>0){
+    return {coverPicUrl :result.rows[0].coverpic_url,profilePicUrl:result.rows[0].profilepic_url}
+  }
+  else{
+    console.log("No users Found");
+    return "No users Found"
+  }
+  }catch(err){
+    console.log("Error Hapeened "+err);
+  }
+}
+
+async function getAllPosts() {
+  const result=await db.query(`SELECT p.id,name,profilepic_url,img_url,title,content FROM info as i left join posts as p on i.user_id=p.user_id order by id asc`);
+  return result.rows;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //routes
 
@@ -409,6 +505,168 @@ app.get("/users/getInfo/:id", async (req, res) => {
     res.json({ status: "Error happened" + err, code: -2 });
   }
 });
+
+app.post("/users/updateUserInfo/:id",upload.none(),async (req,res)=>{
+  const userId=req.params.id;
+   const { phone, email, age } = req.body;
+
+  try{
+    const result= await editUserInfo(phone,email,age,userId);
+    if(result==1)
+      { res.json("Updated Successfully");
+        console.log("updated Succesfully New Info");
+      }
+    else if(result==0) res.json("Failed to Updated");
+  }
+  catch(err){
+    console.log("Error happened"+err);
+  }
+
+});
+
+
+// app.post("/users/updateUserProfilePic/:id",upload.single("profilePic"),async(req,res)=>{
+//   const userId=req.params.id;
+//   const ProfilePicUrl=`/uploads/${req.file.filename}`;
+//   console.log("id"+userId);
+//   let oldProfilePicUrl=await getUserInfoPicById(userId);
+//   oldProfilePicUrl= oldProfilePicUrl.profilePicUrl;
+//   // console.log("old url is "+oldProfilePicUrl);
+//     try{
+//       const result=await editUserProfilePic(userId,ProfilePicUrl);
+//       if(result==1){
+//         //delete old pic
+//         const filename = oldProfilePicUrl.slice(9);
+//         const deleteUrl = deletepath + filename;
+//         console.log("delete url is"+deleteUrl);
+//         try {
+//         fs.unlinkSync(deleteUrl);
+//         console.log("File deleted successfully");
+//         } catch (err) {
+//         console.error("Error deleting file:", err);
+//         }
+//         res.json({status:1 ,newUrl:ProfilePicUrl});
+//       }
+//       else{
+//         console.log("Error Editing Profile Pic");
+//         res.json({status:0,data:"Error happened User May Not Found"});
+//       }
+//     }
+//     catch(err){
+//       console.log("Error happened"+err);
+//       res.json({status:-1,data:"Error happened"})
+//     }
+// });
+
+app.post("/users/updateUserProfilePic/:id", upload.single("profilePic"), async (req, res) => {
+  const userId = req.params.id;
+  const profilePicUrl = `/uploads/${req.file.filename}`;
+  console.log("id " + userId);
+
+  try {
+    // Get old profile pic if exists
+    const oldUserData = await getUserInfoPicById(userId);
+    const oldProfilePicUrl = oldUserData?.profilePicUrl || null;
+
+    // Update in DB
+    const result = await editUserProfilePic(userId, profilePicUrl);
+
+    if (result !== 1) {
+      console.log("Error Editing Profile Pic");
+      return res.json({ status: 0, data: "Error happened. User may not be found" });
+    }
+
+    // If user had an old profile pic, try deleting it
+    if (oldProfilePicUrl) {
+      const filename = oldProfilePicUrl.slice(9); // remove "/uploads/"
+      const deleteUrl = path.join(deletepath, filename);
+      console.log("delete url is " + deleteUrl);
+      try {
+        fs.unlinkSync(deleteUrl);
+        console.log("Old profile pic deleted successfully");
+      } catch (err) {
+        console.error("Error deleting old profile pic:", err);
+      }
+    } else {
+      console.log("No previous profile pic found");
+    }
+
+    // Send success after all operations
+    return res.json({ status: 1, newUrl: profilePicUrl });
+
+  } catch (err) {
+    console.error("Error happened", err);
+    return res.json({ status: -1, data: "Error happened" });
+  }
+});
+
+app.post("/users/updateUserCoverPic/:id", upload.single("coverPic"), async (req, res) => {
+  const userId = req.params.id;
+  const coverPicUrl = `/uploads/${req.file.filename}`;
+  console.log("id " + userId);
+
+  try {
+    const oldUserData = await getUserInfoPicById(userId);
+    const oldCoverPicUrl = oldUserData?.coverPicUrl || null;
+
+    const result = await editUserCoverPic(userId, coverPicUrl);
+
+    if (result !== 1) {
+      console.log("Error Editing Cover Pic");
+      return res.json({ status: 0, data: "Error happened. User may not be found" });
+    }
+
+    // If user had an old cover pic, try deleting it
+    if (oldCoverPicUrl) {
+      const filename = oldCoverPicUrl.slice(9); // remove "/uploads/"
+      const deleteUrl = path.join(deletepath, filename);
+      console.log("delete url is " + deleteUrl);
+      try {
+        fs.unlinkSync(deleteUrl);
+        console.log("Old cover pic deleted successfully");
+      } catch (err) {
+        console.error("Error deleting old cover pic:", err);
+      }
+    } else {
+      console.log("No previous cover pic found");
+    }
+
+    // Send success after all operations
+    return res.json({ status: 1, newUrl: coverPicUrl });
+
+  } catch (err) {
+    console.error("Error happened", err);
+    return res.json({ status: -1, data: "Error happened" });
+  }
+});
+app.get("/users/getAllPosts",async(req,res)=>{
+  try{
+  const result=await getAllPosts();
+  res.json({code:1,posts:result})
+  }
+  catch(err)
+  {
+    console.log("Error Happened "+err);
+    res.json({code:-1,data:"Error Happened"});
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //passport sessions
 
