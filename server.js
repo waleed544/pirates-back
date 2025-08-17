@@ -294,19 +294,19 @@ app.get("/", (req, res) => {
 });
 
 // Start Google OAuth login
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["email", "profile"] })
-);
+// app.get(
+//   "/auth/google",
+//   passport.authenticate("google", { scope: ["email", "profile"] })
+// );
 
 // Google OAuth callback URL
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login", // redirect on failure
-    successRedirect: "http://localhost:3000/", // redirect frontend on success
-  })
-);
+// app.get(
+//   "/auth/google/callback",
+//   passport.authenticate("google", {
+//     failureRedirect: "/login", // redirect on failure
+//     successRedirect: "http://localhost:3000/", // redirect frontend on success
+//   })
+// );
 
 app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
@@ -731,36 +731,36 @@ passport.use(
   })
 );
 
-passport.use(
-  "google",
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:5000/auth/google/callback",
-      userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
-    },
-    async (accessToken, refreshToken, profile, cb) => {
-      try {
-        console.log(profile);
-        const result = await db.query("SELECT * FROM users WHERE email = $1", [
-          profile.email,
-        ]);
-        if (result.rowCount == 0) {
-          const newUser = await db.query(
-            "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
-            [profile.email, "google"]
-          );
-          return cb(null, newUser.rows[0]);
-        } else {
-          return cb(null, result.rows[0]);
-        }
-      } catch (err) {
-        return cb(err);
-      }
-    }
-  )
-);
+// passport.use(
+//   "google",
+//   new GoogleStrategy(
+//     {
+//       clientID: process.env.GOOGLE_CLIENT_ID,
+//       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+//       callbackURL: "http://localhost:5000/auth/google/callback",
+//       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+//     },
+//     async (accessToken, refreshToken, profile, cb) => {
+//       try {
+//         console.log(profile);
+//         const result = await db.query("SELECT * FROM users WHERE email = $1", [
+//           profile.email,
+//         ]);
+//         if (result.rowCount == 0) {
+//           const newUser = await db.query(
+//             "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
+//             [profile.email, "google"]
+//           );
+//           return cb(null, newUser.rows[0]);
+//         } else {
+//           return cb(null, result.rows[0]);
+//         }
+//       } catch (err) {
+//         return cb(err);
+//       }
+//     }
+//   )
+// );
 
 passport.serializeUser((user, done) => {
   done(null, user.id); // or user.username if id is not available
