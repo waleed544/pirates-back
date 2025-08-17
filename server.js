@@ -14,11 +14,6 @@ import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
 var backslash = "\\";
-import dns from "dns";
-
-dns.lookup("db.warfmljlhduaxvzqbuuk.supabase.co", (err, address, family) => {
-  console.log(err, address, family);
-});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // const uploadpath = `${dirname}${backslash}public${backslash}uploads`;
@@ -40,7 +35,7 @@ const db = new pg.Client({
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,      // 5432
   ssl: { rejectUnauthorized: false },
-  family: 6                        // force IPv6
+  family: 4                      // force IPv6
 });
 
 db.connect(err => {
