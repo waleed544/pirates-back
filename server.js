@@ -14,12 +14,18 @@ import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
 var backslash = "\\";
+import dns from "dns";
+
+dns.lookup("db.warfmljlhduaxvzqbuuk.supabase.co", (err, address, family) => {
+  console.log(err, address, family);
+});
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // const uploadpath = `${dirname}${backslash}public${backslash}uploads`;
 const deletepath = `${__dirname}${backslash}public${backslash}uploads${backslash}`;
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 const saltRounds = 10;
 env.config();
 // Serve uploaded files from public/uploads
@@ -29,12 +35,19 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 const db = new pg.Client({
   user: process.env.PG_USER,
-  host: process.env.PG_HOST,
+  host: process.env.PG_HOST,      // e.g., db.warfmljlhduaxvzqbuuk.supabase.co
   database: process.env.PG_DATABASE,
   password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,
+  port: process.env.PG_PORT,      // 5432
+  ssl: { rejectUnauthorized: false },
+  family: 6                        // force IPv6
 });
-db.connect();
+
+db.connect(err => {
+  if (err) console.error("Connection error:", err.stack);
+  else console.log("Connected to Supabase ✅");
+});
+
 
 app.use(
   cors({
@@ -50,6 +63,15 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
+  //    cookie: {
+  //   secure: true,        // true in production (HTTPS)
+  //   sameSite: "none"
+  // }
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",   // only secure in production
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+  }
   })
 );
 
@@ -224,7 +246,7 @@ async function getUserInfoPicById(userId) {
 }
 
 async function getAllPosts() {
-  const result=await db.query(`SELECT p.id,name,profilepic_url,img_url,title,content FROM info as i left join posts as p on i.user_id=p.user_id order by id asc`);
+  const result=await db.query(`SELECT p.id,name,profilepic_url,img_url,title,content FROM info as i inner join posts as p on i.user_id=p.user_id order by id asc`);
   return result.rows;
 }
 
