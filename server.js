@@ -5,7 +5,6 @@ import cors from "cors";
 import bcrypt, { compareSync } from "bcrypt";
 import passport from "passport";
 import { Strategy } from "passport-local";
-import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
 import multer from "multer";
@@ -13,10 +12,11 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
-var backslash = "\\";
+import pkg from "pg";
+const { Pool } = pkg;
 
+var backslash = "\\";
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// const uploadpath = `${dirname}${backslash}public${backslash}uploads`;
 const deletepath = `${__dirname}${backslash}public${backslash}uploads${backslash}`;
 
 const app = express();
@@ -28,20 +28,22 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 //config
 
-const db = new pg.Client({
-  user: process.env.PG_USER,
-  host: process.env.PG_HOST,      // e.g., db.warfmljlhduaxvzqbuuk.supabase.co
-  database: process.env.PG_DATABASE,
-  password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,      // 5432
-  ssl: { rejectUnauthorized: false },
-  family: 4                      // force IPv6
+console.log("DB Config:", {
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  port: process.env.PGPORT,
 });
 
-db.connect(err => {
-  if (err) console.error("Connection error:", err.stack);
-  else console.log("Connected to Supabase ✅");
+const db = new Pool({
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT || 5432,
+  ssl: { rejectUnauthorized: false }
 });
+
 
 
 app.use(
@@ -58,15 +60,6 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
-  //    cookie: {
-  //   secure: true,        // true in production (HTTPS)
-  //   sameSite: "none"
-  // }
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",   // only secure in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
-  }
   })
 );
 
@@ -98,41 +91,209 @@ function isAuthenticated(req, res, next) {
 
 //users
 
+// async function addNewUser(username, password) {
+//   const hashedPassword = await bcrypt.hash(password, saltRounds);
+//   const result = await db.query(
+//     "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
+//     [username, hashedPassword]
+//   );
+//   return result;
+// }
+
+// //posts func
+// async function addPost(title, content, imgurl, userid) {
+//   const result = await db.query(
+//     `insert into posts (title,content,img_url,user_id) values ('${title}','${content}','${imgurl}',${userid}) RETURNING *;`
+//   );
+//   if (result.rows.length > 0) return result.rows[0].id;
+//   else return 0;
+// }
+
+// async function deletePost(id) {
+//   const result = await db.query(`delete from posts where id=${id}`);
+//   return 1;
+// }
+
+// async function editPost(id, newimgurl, newtitle, newcontent) {
+//   const result = await db.query(
+//     `update posts set img_url='${newimgurl}' ,title='${newtitle}' ,content='${newcontent}'where id=${id}  RETURNING *`
+//   );
+//   if (result.rows.length > 0) return 1;
+//   else return 0;
+// }
+
+// async function getUserPosts(id) {
+//   const result = await db.query(
+//     `select img_url,title,content,id from posts where user_id=${id} order by id Asc`
+//   );
+//   console.log("from func" + JSON.stringify(result.rows));
+//   if (result.rowCount > 0) {
+//     return result.rows;
+//   } else {
+//     return 0;
+//   }
+// }
+
+// async function getUrlByID(id) {
+//   const reult = await db.query(`select img_url from posts where id=${id}`);
+//   console.log("img url is" + reult.rows[0]);
+//   return reult.rows[0].img_url;
+// }
+// async function addUserInfo(
+//   name,
+//   phone,
+//   email,
+//   age,
+//   profPicUrl,
+//   coverPicUrl,
+//   userId
+// ) {
+//   const result = await db.query(
+//     `insert into info (name,age,phone,email,profilepic_url,coverpic_url,user_id) values('${name}',${age},'${phone}','${email}','${profPicUrl}','${coverPicUrl}',${userId})  RETURNING *`
+//   );
+//   console.log("in add info func" + result.rows[0]);
+//   if (result.rows.length > 0) {
+//     return result.rows[0];
+//   } else return -1;
+// }
+
+// async function getUserIInfo(userId) {
+//   const result = await db.query(
+//     `select name,age,phone,email,profilepic_url,coverpic_url from info where user_id=${userId}`
+//   );
+//   if (result.rows.length > 0) {
+//     return result.rows[0];
+//   } else {
+//     return -1;
+//   }
+// }
+
+// async function editUserInfo(phone,email,age,userId) {
+//   try{
+//   const result=await db.query(`update info set age=${age} , phone='${phone}', email='${email}' where user_id=${userId} RETURNING *`);
+//   if(result.rows.length>0)
+//   {
+//     return 1;
+//   }
+//   else{
+//     return 0;
+//   }
+//   }catch(err)
+//   {
+//     console.log("Error updating info "+err);
+//     return -1;
+//   }
+  
+// }
+
+// async function editUserProfilePic(userId,profileUrl) {
+//   try{
+//   const result =await db.query(`update info set profilepic_url='${profileUrl}' where user_id=${userId} RETURNING *`);
+//    if(result.rows.length>0)
+//   {
+//     return 1;
+//   }
+//   else{
+//     return 0;
+//   }
+//   }catch(err){
+//     console.log("Error happened "+err);
+//     return -1;
+//   }
+// }
+
+// async function editUserCoverPic(userId,coverUrl) {
+//   try{
+//   const result =await db.query(`update info set coverpic_url='${coverUrl}' where user_id=${userId} RETURNING *`);
+//    if(result.rows.length>0)
+//   {
+//     return 1;
+//   }
+//   else{
+//     return 0;
+//   }
+//   }catch(err){
+//     console.log("Error happened "+err);
+//     return -1;
+//   }
+// }
+
+// async function getUserInfoPicById(userId) {
+//   try{
+//   const result= await db.query(`select coverpic_url,profilepic_url from info where user_id =${userId}`);
+//   if(result.rows.length>0){
+//     return {coverPicUrl :result.rows[0].coverpic_url,profilePicUrl:result.rows[0].profilepic_url}
+//   }
+//   else{
+//     console.log("No users Found");
+//     return "No users Found"
+//   }
+//   }catch(err){
+//     console.log("Error Hapeened "+err);
+//   }
+// }
+
+// async function getAllPosts() {
+//   const result=await db.query(`SELECT p.id,name,profilepic_url,img_url,title,content FROM info as i inner join posts as p on i.user_id=p.user_id order by id asc`);
+//   return result.rows;
+// }
+
 async function addNewUser(username, password) {
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-  const result = await db.query(
-    "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
-    [username, hashedPassword]
-  );
-  return result;
+  try {
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const query = `
+      INSERT INTO users (username, password)
+      VALUES ($1, $2)
+      RETURNING *;
+    `;
+
+    const result = await db.query(query, [username, hashedPassword]);
+
+    return result;
+  } catch (err) {
+    console.error("Error inserting new user:", err);
+    throw err; // keep behavior consistent
+  }
 }
 
-//posts func
-async function addPost(title, content, imgurl, userid) {
-  const result = await db.query(
-    `insert into posts (title,content,img_url,user_id) values ('${title}','${content}','${imgurl}',${userid}) RETURNING *;`
-  );
+ async function addPost(title, content, imgurl, userid) {
+  const query = `
+    INSERT INTO posts (title, content, img_url, user_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *;
+  `;
+  const result = await db.query(query, [title, content, imgurl, userid]);
   if (result.rows.length > 0) return result.rows[0].id;
   else return 0;
 }
 
-async function deletePost(id) {
-  const result = await db.query(`delete from posts where id=${id}`);
-  return 1;
+ async function deletePost(id) {
+  const query = `DELETE FROM posts WHERE id = $1`;
+  const result = await db.query(query, [id]);
+  return 1;  // keep same as your code
 }
 
-async function editPost(id, newimgurl, newtitle, newcontent) {
-  const result = await db.query(
-    `update posts set img_url='${newimgurl}' ,title='${newtitle}' ,content='${newcontent}'where id=${id}  RETURNING *`
-  );
+ async function editPost(id, newimgurl, newtitle, newcontent) {
+  const query = `
+    UPDATE posts
+    SET img_url = $1, title = $2, content = $3
+    WHERE id = $4
+    RETURNING *;
+  `;
+  const result = await db.query(query, [newimgurl, newtitle, newcontent, id]);
   if (result.rows.length > 0) return 1;
   else return 0;
 }
 
-async function getUserPosts(id) {
-  const result = await db.query(
-    `select img_url,title,content,id from posts where user_id=${id} order by id Asc`
-  );
+ async function getUserPosts(id) {
+  const query = `
+    SELECT img_url, title, content, id
+    FROM posts
+    WHERE user_id = $1
+    ORDER BY id ASC;
+  `;
+  const result = await db.query(query, [id]);
   console.log("from func" + JSON.stringify(result.rows));
   if (result.rowCount > 0) {
     return result.rows;
@@ -141,12 +302,16 @@ async function getUserPosts(id) {
   }
 }
 
-async function getUrlByID(id) {
-  const reult = await db.query(`select img_url from posts where id=${id}`);
+ async function getUrlByID(id) {
+  const query = `SELECT img_url FROM posts WHERE id = $1`;
+  const reult = await db.query(query, [id]);
   console.log("img url is" + reult.rows[0]);
-  return reult.rows[0].img_url;
+  return reult.rows[0].img_url;  // unchanged (still crashes if no row, same as your code)
 }
-async function addUserInfo(
+
+// -------------------- USER INFO --------------------
+
+ async function addUserInfo(
   name,
   phone,
   email,
@@ -155,19 +320,25 @@ async function addUserInfo(
   coverPicUrl,
   userId
 ) {
-  const result = await db.query(
-    `insert into info (name,age,phone,email,profilepic_url,coverpic_url,user_id) values('${name}',${age},'${phone}','${email}','${profPicUrl}','${coverPicUrl}',${userId})  RETURNING *`
-  );
+  const query = `
+    INSERT INTO info (name, age, phone, email, profilepic_url, coverpic_url, user_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING *;
+  `;
+  const result = await db.query(query, [name, age, phone, email, profPicUrl, coverPicUrl, userId]);
   console.log("in add info func" + result.rows[0]);
   if (result.rows.length > 0) {
     return result.rows[0];
   } else return -1;
 }
 
-async function getUserIInfo(userId) {
-  const result = await db.query(
-    `select name,age,phone,email,profilepic_url,coverpic_url from info where user_id=${userId}`
-  );
+ async function getUserIInfo(userId) {
+  const query = `
+    SELECT name, age, phone, email, profilepic_url, coverpic_url
+    FROM info
+    WHERE user_id = $1;
+  `;
+  const result = await db.query(query, [userId]);
   if (result.rows.length > 0) {
     return result.rows[0];
   } else {
@@ -175,73 +346,98 @@ async function getUserIInfo(userId) {
   }
 }
 
-async function editUserInfo(phone,email,age,userId) {
-  try{
-  const result=await db.query(`update info set age=${age} , phone='${phone}', email='${email}' where user_id=${userId} RETURNING *`);
-  if(result.rows.length>0)
-  {
-    return 1;
-  }
-  else{
-    return 0;
-  }
-  }catch(err)
-  {
-    console.log("Error updating info "+err);
-    return -1;
-  }
-  
-}
-
-async function editUserProfilePic(userId,profileUrl) {
-  try{
-  const result =await db.query(`update info set profilepic_url='${profileUrl}' where user_id=${userId} RETURNING *`);
-   if(result.rows.length>0)
-  {
-    return 1;
-  }
-  else{
-    return 0;
-  }
-  }catch(err){
-    console.log("Error happened "+err);
+ async function editUserInfo(phone, email, age, userId) {
+  try {
+    const query = `
+      UPDATE info
+      SET age = $1, phone = $2, email = $3
+      WHERE user_id = $4
+      RETURNING *;
+    `;
+    const result = await db.query(query, [age, phone, email, userId]);
+    if (result.rows.length > 0) {
+      return 1;
+    } else {
+      return 0;
+    }
+  } catch (err) {
+    console.log("Error updating info " + err);
     return -1;
   }
 }
 
-async function editUserCoverPic(userId,coverUrl) {
-  try{
-  const result =await db.query(`update info set coverpic_url='${coverUrl}' where user_id=${userId} RETURNING *`);
-   if(result.rows.length>0)
-  {
-    return 1;
-  }
-  else{
-    return 0;
-  }
-  }catch(err){
-    console.log("Error happened "+err);
+ async function editUserProfilePic(userId, profileUrl) {
+  try {
+    const query = `
+      UPDATE info
+      SET profilepic_url = $1
+      WHERE user_id = $2
+      RETURNING *;
+    `;
+    const result = await db.query(query, [profileUrl, userId]);
+    if (result.rows.length > 0) {
+      return 1;
+    } else {
+      return 0;
+    }
+  } catch (err) {
+    console.log("Error happened " + err);
     return -1;
   }
 }
 
-async function getUserInfoPicById(userId) {
-  try{
-  const result= await db.query(`select coverpic_url,profilepic_url from info where user_id =${userId}`);
-  if(result.rows.length>0){
-    return {coverPicUrl :result.rows[0].coverpic_url,profilePicUrl:result.rows[0].profilepic_url}
-  }
-  else{
-    console.log("No users Found");
-    return "No users Found"
-  }
-  }catch(err){
-    console.log("Error Hapeened "+err);
+ async function editUserCoverPic(userId, coverUrl) {
+  try {
+    const query = `
+      UPDATE info
+      SET coverpic_url = $1
+      WHERE user_id = $2
+      RETURNING *;
+    `;
+    const result = await db.query(query, [coverUrl, userId]);
+    if (result.rows.length > 0) {
+      return 1;
+    } else {
+      return 0;
+    }
+  } catch (err) {
+    console.log("Error happened " + err);
+    return -1;
   }
 }
 
-async function getAllPosts() {
-  const result=await db.query(`SELECT p.id,name,profilepic_url,img_url,title,content FROM info as i inner join posts as p on i.user_id=p.user_id order by id asc`);
+ async function getUserInfoPicById(userId) {
+  try {
+    const query = `
+      SELECT coverpic_url, profilepic_url
+      FROM info
+      WHERE user_id = $1;
+    `;
+    const result = await db.query(query, [userId]);
+    if (result.rows.length > 0) {
+      return {
+        coverPicUrl: result.rows[0].coverpic_url,
+        profilePicUrl: result.rows[0].profilepic_url
+      };
+    } else {
+      console.log("No users Found");
+      return "No users Found";
+    }
+  } catch (err) {
+    console.log("Error Hapeened " + err);
+  }
+}
+
+// -------------------- POSTS + USER JOIN --------------------
+
+ async function getAllPosts() {
+  const query = `
+    SELECT p.id, name, profilepic_url, img_url, title, content
+    FROM info AS i
+    INNER JOIN posts AS p ON i.user_id = p.user_id
+    ORDER BY id ASC;
+  `;
+  const result = await db.query(query);
   return result.rows;
 }
 
@@ -541,39 +737,6 @@ app.post("/users/updateUserInfo/:id",upload.none(),async (req,res)=>{
 
 });
 
-
-// app.post("/users/updateUserProfilePic/:id",upload.single("profilePic"),async(req,res)=>{
-//   const userId=req.params.id;
-//   const ProfilePicUrl=`/uploads/${req.file.filename}`;
-//   console.log("id"+userId);
-//   let oldProfilePicUrl=await getUserInfoPicById(userId);
-//   oldProfilePicUrl= oldProfilePicUrl.profilePicUrl;
-//   // console.log("old url is "+oldProfilePicUrl);
-//     try{
-//       const result=await editUserProfilePic(userId,ProfilePicUrl);
-//       if(result==1){
-//         //delete old pic
-//         const filename = oldProfilePicUrl.slice(9);
-//         const deleteUrl = deletepath + filename;
-//         console.log("delete url is"+deleteUrl);
-//         try {
-//         fs.unlinkSync(deleteUrl);
-//         console.log("File deleted successfully");
-//         } catch (err) {
-//         console.error("Error deleting file:", err);
-//         }
-//         res.json({status:1 ,newUrl:ProfilePicUrl});
-//       }
-//       else{
-//         console.log("Error Editing Profile Pic");
-//         res.json({status:0,data:"Error happened User May Not Found"});
-//       }
-//     }
-//     catch(err){
-//       console.log("Error happened"+err);
-//       res.json({status:-1,data:"Error happened"})
-//     }
-// });
 
 app.post("/users/updateUserProfilePic/:id", upload.single("profilePic"), async (req, res) => {
   const userId = req.params.id;
