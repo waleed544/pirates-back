@@ -47,7 +47,7 @@ const db = new Pool({
 
 app.use(
   cors({
-    origin: "https://pirates-front.vercel.app",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     credentials: true,
