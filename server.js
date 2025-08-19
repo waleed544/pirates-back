@@ -47,7 +47,7 @@ const db = new Pool({
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://pirates-back-production.up.railway.app",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     credentials: true,
