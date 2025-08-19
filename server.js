@@ -48,18 +48,31 @@ const db = new Pool({
 
 app.use(
   cors({
-    origin: "https://pirates-front.vercel.app", // React dev server URL
+    origin: "https://pirates-front.vercel.app",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     credentials: true,
   })
 );
 
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//   })
+// );
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: true,      // force HTTPS cookies
+      sameSite: "none",  // allow cross-site cookies (Vercel frontend ↔ backend)
+    },
   })
 );
 
