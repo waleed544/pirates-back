@@ -48,7 +48,7 @@ const db = new Pool({
 
 app.use(
   cors({
-    origin: "https://pirates-back-production.up.railway.app", // React dev server URL
+    origin: "https://pirates-front.vercel.app", // React dev server URL
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     credentials: true,
